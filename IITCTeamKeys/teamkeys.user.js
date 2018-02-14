@@ -5,10 +5,9 @@
 // @version        0.0.2.0
 // @namespace      https://github.com/jonatkins/ingress-intel-total-conversion
 // @description    Allows teams to collaborate with keys, showing all keys owned by each member of the team.
-// @include        https://www.ingress.com/intel*
-// @include        http://www.ingress.com/intel*
-// @match          https://www.ingress.com/intel*
-// @match          http://www.ingress.com/intel*
+// @match          https://*.ingress.com/intel*
+// @match          http://*.ingress.com/intel*
+// @include        /^https?:\/\/.*ingress\.com\/intel.*/
 // @grant          none
 // ==/UserScript==
 
@@ -534,6 +533,9 @@ function wrapper() {
         members = (members ? members.split("\n") : []);
         mods = (mods ? mods.split("\n") : []);
         var noLookup = [];
+        $.each(members, function(index, item) {
+            data.members.push(item);
+        });
         $.each(mods, function(index, item) {
             // unmatched username in braces, use exact value
             if (item.match(/^{[0-9a-f]{32}\.c}$/)) {

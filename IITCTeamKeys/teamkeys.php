@@ -2,9 +2,14 @@
 // connect to database
 $dbFile = "teamkeys.db";
 $db = require_once getenv("PHPLIB") . "db.php";
-header("Access-Control-Allow-Origin: https://www.ingress.com");
+$url = $_SERVER["HTTP_REFERER"];
+if (strpos($url, "www") !== false) {
+	header("Access-Control-Allow-Origin: https://www.ingress.com");
+} else {
+	header("Access-Control-Allow-Origin: https://ingress.com");
+}
 // only accept requests directly from the Intel page
-if (strpos($_SERVER["HTTP_REFERER"], "https://www.ingress.com/") !== false) {
+if (strpos($url, "https://") !== false && strpos($url, "ingress.com/") !== false) {
     switch ($_POST["action"]) {
         // download an entire list of keys (optionally submit a new set of keys to upload)
         case "sync":
@@ -15,14 +20,24 @@ if (strpos($_SERVER["HTTP_REFERER"], "https://www.ingress.com/") !== false) {
                 if ($db->has("teams", array("AND" => array("user" => $user, "team" => $team)))) {
                     // submitted new keys to upload
                     if (isset($_POST["keys"])) {
-                        // remove existing keys
-                        $db->delete("keys", array("AND" => array("user" => $user, "team" => $team)));
-                        // add new keys
-                        $data = array();
+                        // insert or update current keys
+                        $existkeys = array();
                         foreach ($_POST["keys"] as $portal => $count) {
-                            array_push($data, array("user" => $user, "team" => $team, "portal" => $portal, "count" => $count));
+                            $result = $db->select("keys", ["id"], array("AND" => array("portal" => $portal, "user" => $user, "team" => $team)));
+                            if (count($result) === 0) {
+                                $db->insert("keys", array("user" => $user, "team" => $team, "portal" => $portal, "count" => $count));
+                            } else {
+                                $db->update("keys", array("count" => $count), array("id" => $result[0]["id"]));
+                            }
+                            array_push($existkeys, $portal);
                         }
-                        $db->insert("keys", $data);
+                        // remove keys which no longer exist
+                        $result = $db->select("keys", ["portal"], array("AND" => array("user" => $user, "team" => $team)));
+                        foreach ($result as $row) {
+                            if (!in_array($row["portal"], $existkeys)) {
+                                $db->delete("keys", array("portal" => $row["portal"], "user" => $user, "team" => $team));
+                            }
+                        }
                     }
                     // fetch all team keys
                     $result = $db->select("keys", "*", array("team" => $team));
@@ -70,7 +85,7 @@ if (strpos($_SERVER["HTTP_REFERER"], "https://www.ingress.com/") !== false) {
                     // if not in cache already, or different value, add/update it
                     $result = $db->select("cache", "*", array("key" => $key));
                     if (count($result) === 0) {
-                        $db->update("cache", array("key" => $key, "value" => $value));
+                        $db->insert("cache", array("key" => $key, "value" => $value));
                     } elseif ($value !== $result[0]["value"]) {
                         $db->update("cache", array("value" => $value), array("key" => $key));
                     }
