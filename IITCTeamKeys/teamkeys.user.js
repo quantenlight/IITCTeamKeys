@@ -183,8 +183,10 @@ function wrapper() {
         // return the dialog
         return obj;
     };
-    // sync all keys with the server
+    // sync all keys with the server 
     self.syncKeys = function syncKeys() {
+        // add name of selected portal to cache table
+        self.syncCache();
         // hide current key count for displayed portal
         $("#teamKeys").html("Refreshing team keys...");
         console.log("[Team Keys] Refreshing team keys...");
